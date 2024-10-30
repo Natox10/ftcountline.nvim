@@ -38,7 +38,12 @@ local function find_c_functions(bufnr)
 	while i <= #lines do
 		local line = lines[i]
 		-- Recherche les dÃ©clarations de fonction
-		if line:match("^[%s*]*[%w_]+%s+[%w_]+%s*%(.*%)%s*$") then
+		if
+			line:match("^%s*[%w_*]+%s+[%w_*]+%s*%**%s*[%w_]+%s*%(.*%)%s*$")
+			and not line:match("^%s*typedef")
+			and not line:match("^%s*extern")
+			and not line:match("^%s*#")
+		then
 			local start_line = i
 			local brace_line = i
 
