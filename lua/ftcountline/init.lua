@@ -1,14 +1,8 @@
 local M = {}
 
 local function count_lines_in_function(lines, start_index, end_index)
-	local count = 0
-	for i = start_index, end_index do
-		local line = lines[i]
-		if line and not line:match("^%s*$") then -- Ignore les lignes vides
-			count = count + 1
-		end
-	end
-	return count - 1 -- Soustrait la ligne de l'accolade fermante
+	-- Compte toutes les lignes entre les accolades inclusivement
+	return end_index - start_index + 1
 end
 
 local function find_function_end(lines, start_index)
@@ -56,9 +50,10 @@ local function find_c_functions(bufnr)
 			if brace_line <= #lines then
 				local end_line = find_function_end(lines, brace_line)
 				if end_line then
-					local count = count_lines_in_function(lines, brace_line + 1, end_line - 1)
+					-- Le comptage inclut les accolades et toutes les lignes entre elles
+					local count = count_lines_in_function(lines, brace_line, end_line)
 					table.insert(functions, {
-						start_line = start_line - 1, -- -1 pour l'indexation 0-based de nvim
+						start_line = start_line - 1,
 						end_line = end_line - 1,
 						line_count = count,
 					})
@@ -91,13 +86,13 @@ function M.setup(opts)
 	-- Commande pour actualisation manuelle
 	vim.api.nvim_create_user_command("CountLines", M.display_line_counts, {})
 
-	-- Actualisation automatique
+	-- Actualisation automatique lors de la modification du texte
 	vim.api.nvim_create_autocmd({ "BufWritePost", "TextChanged", "TextChangedI" }, {
 		pattern = { "*.c", "*.h" },
 		callback = M.display_line_counts,
 	})
 
-	-- Affichage initial
+	-- Affichage initial lors de l'ouverture d'un fichier
 	vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
 		pattern = { "*.c", "*.h" },
 		callback = M.display_line_counts,
