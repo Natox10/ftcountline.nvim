@@ -1,82 +1,72 @@
 local M = {}
 
-local function is_function_declaration(line)
-	-- Détecte une déclaration de fonction C
-	-- Gère: type_retour nom_fonction(params)
-	return line:match("^%s*[%w_*]+%s+[%w_]+%s*%(.*%)%s*$")
-		and not line:match("^%s*typedef%s+")
-		and not line:match("^%s*extern%s+")
-		and not line:match("^%s*static%s+inline%s+")
+local function count_lines_in_function(lines, start_index, end_index)
+	local count = 0
+	for i = start_index, end_index do
+		local line = lines[i]
+		if line and not line:match("^%s*$") then -- Ignore les lignes vides
+			count = count + 1
+		end
+	end
+	return count - 1 -- Soustrait la ligne de l'accolade fermante
 end
 
-local function is_comment(line)
-	return line:match("^%s*//") or line:match("^%s*/%*") or line:match("^%s*%*")
-end
+local function find_function_end(lines, start_index)
+	local brace_count = 0
+	local found_opening = false
 
-local function is_empty_line(line)
-	return line:match("^%s*$")
+	for i = start_index, #lines do
+		local line = lines[i]
+
+		-- Compte les accolades
+		local opening = select(2, line:gsub("{", ""))
+		local closing = select(2, line:gsub("}", ""))
+
+		if opening > 0 then
+			found_opening = true
+		end
+
+		if found_opening then
+			brace_count = brace_count + opening - closing
+			if brace_count == 0 then
+				return i
+			end
+		end
+	end
+	return nil
 end
 
 local function find_c_functions(bufnr)
 	local functions = {}
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-	local in_function = false
-	local start_line = 0
-	local brace_count = 0
-	local in_multiline_comment = false
-	local potential_declaration = false
-	local declaration_line = 0
 
-	for i, line in ipairs(lines) do
-		-- Gestion des commentaires multi-lignes
-		if line:match("/%*") then
-			in_multiline_comment = true
-		end
-		if line:match("%*/") then
-			in_multiline_comment = false
-		end
+	local i = 1
+	while i <= #lines do
+		local line = lines[i]
+		-- Recherche les dÃ©clarations de fonction
+		if line:match("^[%s*]*[%w_]+%s+[%w_]+%s*%(.*%)%s*$") then
+			local start_line = i
+			local brace_line = i
 
-		if not in_multiline_comment then
-			-- Détection de déclaration de fonction
-			if not in_function then
-				if is_function_declaration(line) then
-					potential_declaration = true
-					declaration_line = i
-				end
+			-- Cherche l'accolade ouvrante
+			while brace_line <= #lines and not lines[brace_line]:match("{") do
+				brace_line = brace_line + 1
+			end
 
-				if potential_declaration and line:match("{") then
-					in_function = true
-					start_line = declaration_line
-					brace_count = 1
-					potential_declaration = false
-				end
-			else
-				-- Comptage des accolades dans le corps de la fonction
-				brace_count = brace_count + select(2, line:gsub("{", ""))
-				brace_count = brace_count - select(2, line:gsub("}", ""))
-
-				if brace_count == 0 then
-					-- Calcul du nombre de lignes en excluant les lignes vides et commentaires
-					local real_start = start_line
-					local real_end = i
-					local actual_lines = 0
-
-					for j = start_line, i do
-						local line_content = lines[j]
-						if not is_empty_line(line_content) and not is_comment(line_content) then
-							actual_lines = actual_lines + 1
-						end
-					end
-
+			if brace_line <= #lines then
+				local end_line = find_function_end(lines, brace_line)
+				if end_line then
+					local count = count_lines_in_function(lines, brace_line + 1, end_line - 1)
 					table.insert(functions, {
-						start_line = start_line,
-						end_line = i,
-						line_count = actual_lines,
+						start_line = start_line - 1, -- -1 pour l'indexation 0-based de nvim
+						end_line = end_line - 1,
+						line_count = count,
 					})
-					in_function = false
+					i = end_line
 				end
 			end
 		end
+		i = i + 1
 	end
 	return functions
 end
@@ -88,10 +78,8 @@ function M.display_line_counts()
 
 	local functions = find_c_functions(bufnr)
 	for _, func in ipairs(functions) do
-		local text = string.format("Lignes: %d", func.line_count)
-
 		vim.api.nvim_buf_set_extmark(bufnr, namespace, func.end_line, 0, {
-			virt_text = { { text, "Comment" } },
+			virt_text = { { string.format("Lignes: %d", func.line_count), "Comment" } },
 			virt_text_pos = "eol",
 		})
 	end
@@ -100,14 +88,20 @@ end
 function M.setup(opts)
 	opts = opts or {}
 
+	-- Commande pour actualisation manuelle
 	vim.api.nvim_create_user_command("CountLines", M.display_line_counts, {})
 
-	if opts.auto_update ~= false then
-		vim.api.nvim_create_autocmd({ "BufWritePost" }, {
-			pattern = { "*.c" },
-			callback = M.display_line_counts,
-		})
-	end
+	-- Actualisation automatique
+	vim.api.nvim_create_autocmd({ "BufWritePost", "TextChanged", "TextChangedI" }, {
+		pattern = { "*.c", "*.h" },
+		callback = M.display_line_counts,
+	})
+
+	-- Affichage initial
+	vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
+		pattern = { "*.c", "*.h" },
+		callback = M.display_line_counts,
+	})
 end
 
 return M
