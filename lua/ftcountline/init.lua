@@ -73,7 +73,7 @@ function M.display_line_counts()
 
 	local functions = find_c_functions(bufnr)
 	for _, func in ipairs(functions) do
-		vim.api.nvim_buf_set_extmark(bufnr, namespace, func.end_line + 1, 0, {
+		vim.api.nvim_buf_set_extmark(bufnr, namespace, func.end_line, 0, {
 			virt_text = { { string.format("Lines in function: %d", func.line_count), "Comment" } },
 			virt_text_pos = "eol",
 		})
