@@ -1,7 +1,7 @@
 local M = {}
 
 local function count_lines_in_function(lines, start_index, end_index)
-	return end_index - start_index
+	return end_index - start_index - 1
 end
 
 local function find_function_end(lines, start_index)
@@ -53,8 +53,8 @@ local function find_c_functions(bufnr)
 				if end_line then
 					local count = count_lines_in_function(lines, brace_line, end_line)
 					table.insert(functions, {
-						start_line = start_line - 2,
-						end_line = end_line - 2,
+						start_line = start_line - 1,
+						end_line = end_line - 1,
 						line_count = count,
 					})
 					i = end_line
@@ -73,7 +73,7 @@ function M.display_line_counts()
 
 	local functions = find_c_functions(bufnr)
 	for _, func in ipairs(functions) do
-		vim.api.nvim_buf_set_extmark(bufnr, namespace, func.end_line, 0, {
+		vim.api.nvim_buf_set_extmark(bufnr, namespace, func.end_line + 1, 0, {
 			virt_text = { { string.format("Lines in function: %d", func.line_count), "Comment" } },
 			virt_text_pos = "eol",
 		})
