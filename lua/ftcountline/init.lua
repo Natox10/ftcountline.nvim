@@ -2,7 +2,7 @@ local M = {}
 
 local function count_lines_in_function(lines, start_index, end_index)
 	-- Compte toutes les lignes entre les accolades inclusivement
-	return end_index - start_index + 1
+	return end_index - start_index - 1
 end
 
 local function find_function_end(lines, start_index)
