@@ -1,8 +1,7 @@
 local M = {}
 
 local function count_lines_in_function(lines, start_index, end_index)
-	-- Compte toutes les lignes entre les accolades inclusivement
-	return end_index - start_index - 1
+	return end_index - start_index
 end
 
 local function find_function_end(lines, start_index)
@@ -12,7 +11,6 @@ local function find_function_end(lines, start_index)
 	for i = start_index, #lines do
 		local line = lines[i]
 
-		-- Compte les accolades
 		local opening = select(2, line:gsub("{", ""))
 		local closing = select(2, line:gsub("}", ""))
 
@@ -37,7 +35,6 @@ local function find_c_functions(bufnr)
 	local i = 1
 	while i <= #lines do
 		local line = lines[i]
-		-- Recherche les dÃ©clarations de fonction
 		if
 			line:match("^%s*[%w_*]+%s+[%w_*]+%s*%**%s*[%w_]+%s*%(.*%)%s*$")
 			and not line:match("^%s*typedef")
@@ -47,7 +44,6 @@ local function find_c_functions(bufnr)
 			local start_line = i
 			local brace_line = i
 
-			-- Cherche l'accolade ouvrante
 			while brace_line <= #lines and not lines[brace_line]:match("{") do
 				brace_line = brace_line + 1
 			end
@@ -55,10 +51,9 @@ local function find_c_functions(bufnr)
 			if brace_line <= #lines then
 				local end_line = find_function_end(lines, brace_line)
 				if end_line then
-					-- Le comptage inclut les accolades et toutes les lignes entre elles
 					local count = count_lines_in_function(lines, brace_line, end_line)
 					table.insert(functions, {
-						start_line = start_line - 1,
+						start_line = start_line - 2,
 						end_line = end_line - 1,
 						line_count = count,
 					})
@@ -79,7 +74,7 @@ function M.display_line_counts()
 	local functions = find_c_functions(bufnr)
 	for _, func in ipairs(functions) do
 		vim.api.nvim_buf_set_extmark(bufnr, namespace, func.end_line, 0, {
-			virt_text = { { string.format("Lignes: %d", func.line_count), "Comment" } },
+			virt_text = { { string.format("Lines in function: %d", func.line_count), "Comment" } },
 			virt_text_pos = "eol",
 		})
 	end
