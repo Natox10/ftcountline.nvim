@@ -54,7 +54,7 @@ local function find_c_functions(bufnr)
 					local count = count_lines_in_function(lines, brace_line, end_line)
 					table.insert(functions, {
 						start_line = start_line - 2,
-						end_line = end_line - 1,
+						end_line = end_line - 2,
 						line_count = count,
 					})
 					i = end_line
