@@ -1,0 +1,1 @@
+# ftcountline.nvim
