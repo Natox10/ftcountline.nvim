@@ -1,6 +1,6 @@
 # ftcountline.nvim
 
-Ftcountline.nvim is a little plugin for neovim that display the size of your functions for .c files.
+ftcountline.nvim is a little plugin for neovim that displays the size of your functions for .c files.
 
 ## Installation
 
